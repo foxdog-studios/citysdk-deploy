@@ -44,6 +44,7 @@ packages=(
     # osm2pgsql
     "postgresql-server-dev-${postgresql_version}"
     'autoconf'
+    'g++'
     'git'
     'libbz2-dev'
     'libgeos++-dev'
@@ -104,7 +105,7 @@ postgresql_ppa() {
     sudo tee /etc/apt/sources.list.d/pgdg.list <<-EOF
 		deb http://apt.postgresql.org/pub/repos/apt/ $(codename)-pgdg main
 	EOF
-    local "url=http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc"
+    local 'url=http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc'
     wget --output-document - --quiet "${url}" | sudo apt-key add -
 }
 
@@ -131,8 +132,10 @@ packages_upgrade() {
 
 osm2pgsql_checkout() {(
     mkdir -p "${build_path}"
-    local url="https://github.com/openstreetmap/${osm2pgsql_name}.git"
-    git clone "${url}" "${osm2pgsql_path}"
+    if [[ ! -d "${osm2pgsql_path}" ]]; then
+        local "url=https://github.com/openstreetmap/${osm2pgsql_name}.git"
+        git clone "${url}" "${osm2pgsql_path}"
+    fi
     cd -- "${osm2pgsql_path}"
     git checkout "${osm2pgsql_tag}"
 
@@ -189,9 +192,9 @@ usage() {
 		    packages_update
 		    packages_install
 		    packages_upgrade
-		    osm2pgsql_build
-		    osm2pgsql_configure
 		    osm2pgsql_checkout
+		    osm2pgsql_configure
+		    osm2pgsql_build
 		    osm2pgsql_install
 	EOF
     exit 1

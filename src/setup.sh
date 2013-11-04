@@ -87,6 +87,7 @@ codename() {
 setup() {
     postgresql_ppa
 
+    packages_update
     packages_install
     packages_upgrade
 
@@ -110,13 +111,17 @@ postgresql_ppa() {
 
 # = Packages ==================================================================
 
+packages_update() {
+    aptget update
+}
+
+
 packages_install() {
     aptget install "${packages[@]}"
 }
 
 
 packages_upgrade() {
-    aptget update
     aptget dist-upgrade
     aptget autoremove
 }
@@ -168,26 +173,27 @@ osm2pgsql_install() {(
 # =============================================================================
 
 usage() {
-    echo '
-    Set up CitySDK on this machine
+    cat <<-EOF
+		Set up CitySDK on this machine
 
-    Usage:
+		Usage:
 
-        setup.sh [TASK...]
+		    setup.sh [TASK...]
 
-    TASK    The tasks to perform (see "Tasks"). If none are given,
-            the "setup" task is performed.
+		    TASK    A tasks to perform (see "Tasks"). If none are given, the
+		            "setup" task is performed.
 
-    Tasks:
-        * setup
-        * postgresql_ppa
-        * packages_install
-        * packages_upgrade
-        * osm2pgsql_build
-        * osm2pgsql_configure
-        * osm2pgsql_checkout
-        * osm2pgsql_install
-'
+		Tasks:
+		    setup
+		    postgresql_ppa
+		    packages_update
+		    packages_install
+		    packages_upgrade
+		    osm2pgsql_build
+		    osm2pgsql_configure
+		    osm2pgsql_checkout
+		    osm2pgsql_install
+	EOF
     exit 1
 }
 

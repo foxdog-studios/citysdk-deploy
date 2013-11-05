@@ -42,7 +42,6 @@ packages=(
     "postgresql-${postgresql_version}-postgis-${postgis_version}"
 
     # osm2pgsql
-    "postgresql-server-dev-${postgresql_version}"
     'autoconf'
     'g++'
     'git'
@@ -52,9 +51,13 @@ packages=(
     'libprotobuf-c0-dev'
     'libtool'
     'libxml2-dev'
+    "postgresql-server-dev-${postgresql_version}"
     'proj'
     'protobuf-c-compiler'
     'zlib1g-dev'
+
+    # Passenger
+    'libcurl4-openssl-dev'
 )
 
 
@@ -96,6 +99,9 @@ setup() {
     osm2pgsql_configure
     osm2pgsql_build
     osm2pgsql_install
+
+    ruby_rvm
+    ruby_passenger
 }
 
 
@@ -138,7 +144,6 @@ osm2pgsql_checkout() {(
     fi
     cd -- "${osm2pgsql_path}"
     git checkout "${osm2pgsql_tag}"
-
 )}
 
 
@@ -146,7 +151,7 @@ osm2pgsql_configure() {(
     cd -- "${osm2pgsql_path}"
     ./autogen.sh
     ./configure
-    patch Makefile <<-EOF
+    patch Makefile <<-"EOF"
 		229c229
 		< CFLAGS = -g -O2
 		---
@@ -171,20 +176,43 @@ osm2pgsql_install() {(
 )}
 
 
+# = Ruby ======================================================================
+
+ruby_rvm() {
+    sudo -s <<-"EOF"
+		wget --output-document - https://get.rvm.io \
+		        | bash -s stable --rails
+	EOF
+}
+
+
+ruby_passenger() {
+    sudo -s <<-"EOF"
+		source /usr/local/rvm/scripts/rvm
+		gem install passenger
+		cd -- "$(passenger-config --root)"
+		./bin/passenger-install-nginx-module \
+		        --auto                       \
+		        --auto-download              \
+		        --prefix=/usr/local/nginx
+	EOF
+}
+
+
 # =============================================================================
 # = Command line interface                                                    =
 # =============================================================================
 
 usage() {
-    cat <<-EOF
+    cat <<-"EOF"
 		Set up CitySDK on this machine
 
 		Usage:
 
-		    setup.sh [TASK...]
+		    setup.sh [TASKS...]
 
-		    TASK    A tasks to perform (see "Tasks"). If none are given, the
-		            "setup" task is performed.
+		TASKS   Tasks to perform (see "Tasks"). If none are given, the "setup"
+		        task is performed.
 
 		Tasks:
 		    setup
@@ -196,6 +224,8 @@ usage() {
 		    osm2pgsql_configure
 		    osm2pgsql_build
 		    osm2pgsql_install
+		    ruby_rvm
+		    ruby_passenger
 	EOF
     exit 1
 }

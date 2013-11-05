@@ -30,10 +30,12 @@ osm2pgsql_tag=v0.82.0
 
 db_name=citysdk
 
+citysdk_commit=fad84044e4de679452675d9f7c3f9d9e51b79480
 
-# = Packages ==================================================================
 
-packages=(
+# = aptitude ==================================================================
+
+aptitude=(
     # PostgreSQL
     "postgresql-${postgresql_version}"
     "postgresql-contrib-${postgresql_version}"
@@ -58,9 +60,20 @@ packages=(
 
     # Ruby
     'libcurl4-openssl-dev'
+    'libicu-dev' # Required by charlock_holmes
 
     # Memcached
     'memcached'
+
+)
+
+
+gem=(
+    # CitySDK
+    'dbf'
+    'charlock_holmes'
+    'faraday'
+    'georuby'
 )
 
 
@@ -72,12 +85,16 @@ osm2pgsql_name=osm2pgsql
 
 osm2pgsql_path=${build_path}/${osm2pgsql_name}
 
+citysdk_name=citysdk
+
+citysdk_path=${build_path}/${citysdk_name}
+
 
 # =============================================================================
 # = Helpers                                                                   =
 # =============================================================================
 
-aptget() {
+apt-get() {
     sudo apt-get --assume-yes "${@}"
 }
 
@@ -87,19 +104,44 @@ codename() {
 }
 
 
+ensure_build() {
+    mkdir -p "${build_path}"
+}
+
+
+init_rvm='
+    set +o nounset
+    source /usr/local/rvm/scripts/rvm
+    set -o nounset
+'
+
+
+init_shell='
+    set -o errexit
+    set -o nounset
+'
+
+
+init_shell_rvm="
+    ${init_shell}
+    ${init_rvm}
+"
+
+
 # =============================================================================
 # = Tasks                                                                     =
 # =============================================================================
 
 setup() {
-    packages_curl
+    aptitude_curl
 
     postgresql_ppa
 
-    packages_update
-    packages_install
-    packages_upgrade
+    aptitude_update
+    aptitude_install
+    aptitude_upgrade
 
+    osm2pgsql_clone
     osm2pgsql_checkout
     osm2pgsql_configure
     osm2pgsql_build
@@ -107,17 +149,22 @@ setup() {
 
     ruby_rvm
     ruby_passenger
+    ruby_gems
 
     db_create
     db_extensions
+
+    citysdk_clone
+    citysdk_checkout
+    citysdk_build
 }
 
 
-# = Packages (1) ==============================================================
+# = Aptitude (1) ==============================================================
 
-packages_curl() {
+aptitude_curl() {
     # cURL is required by postgresql_ppa and RVM
-    aptget install curl
+    apt-get install curl
 }
 
 
@@ -132,32 +179,36 @@ postgresql_ppa() {
 }
 
 
-# = Packages (2) ==============================================================
+# = Aptitude (2) ==============================================================
 
-packages_update() {
-    aptget update
+aptitude_update() {
+    apt-get update
 }
 
 
-packages_install() {
-    aptget install "${packages[@]}"
+aptitude_install() {
+    apt-get install "${aptitude[@]}"
 }
 
 
-packages_upgrade() {
-    aptget dist-upgrade
-    aptget autoremove
+aptitude_upgrade() {
+    apt-get dist-upgrade
+    apt-get autoremove
 }
 
 
 # = osm2pgsql =================================================================
 
-osm2pgsql_checkout() {(
-    mkdir -p "${build_path}"
+osm2pgsql_clone() {
+    ensure_build
     if [[ ! -d "${osm2pgsql_path}" ]]; then
         local "url=https://github.com/openstreetmap/${osm2pgsql_name}.git"
         git clone "${url}" "${osm2pgsql_path}"
     fi
+}
+
+
+osm2pgsql_checkout() {(
     cd -- "${osm2pgsql_path}"
     git checkout "${osm2pgsql_tag}"
 )}
@@ -195,21 +246,30 @@ osm2pgsql_install() {(
 # = Ruby ======================================================================
 
 ruby_rvm() {
-    sudo -s <<-"EOF"
+    sudo -s <<-EOF
+		${init_shell}
 		curl -L https://get.rvm.io | bash -s stable --rails
 	EOF
 }
 
 
 ruby_passenger() {
-    sudo -s <<-"EOF"
-		source /usr/local/rvm/scripts/rvm
+    sudo -s <<-EOF
+		${init_shell_rvm}
 		gem install passenger
 		cd -- "$(passenger-config --root)"
 		./bin/passenger-install-nginx-module \
 		        --auto                       \
 		        --auto-download              \
 		        --prefix=/usr/local/nginx
+	EOF
+}
+
+
+ruby_gems() {
+    sudo -s <<-EOF
+		${init_shell_rvm}
+		gem install ${gem[@]}
 	EOF
 }
 
@@ -230,6 +290,30 @@ db_extensions() {
 }
 
 
+# = CitySDK ===================================================================
+
+citysdk_clone() {
+    ensure_build
+    local "url=https://github.com/waagsociety/${citysdk_name}.git"
+    if [[ ! -d "${citysdk_path}" ]]; then
+        git clone "${url}" "${citysdk_path}"
+    fi
+}
+
+
+citysdk_checkout() {(
+    cd -- "${citysdk_path}"
+    git checkout "${citysdk_commit}"
+)}
+
+
+citysdk_build() {(
+    cd -- "${citysdk_path}/gem"
+    ${init_rvm}
+    gem build citysdk.gemspec
+)}
+
+
 # =============================================================================
 # = Command line interface                                                    =
 # =============================================================================
@@ -247,19 +331,24 @@ usage() {
 
 		Tasks:
 		    setup
-		    packages_curl
+		    aptitude_curl
 		    postgresql_ppa
-		    packages_update
-		    packages_install
-		    packages_upgrade
+		    aptitude_update
+		    aptitude_install
+		    aptitude_upgrade
+		    osm2pgsql_clone
 		    osm2pgsql_checkout
 		    osm2pgsql_configure
 		    osm2pgsql_build
 		    osm2pgsql_install
 		    ruby_rvm
 		    ruby_passenger
+		    ruby_gems
 		    db_create
 		    db_extensions
+		    citysdk_clone
+		    citysdk_checkout
+		    citysdk_build
 	EOF
     exit 1
 }

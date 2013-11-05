@@ -34,9 +34,6 @@ db_name=citysdk
 # = Packages ==================================================================
 
 packages=(
-    # Setup and RVM
-    'curl'
-
     # PostgreSQL
     "postgresql-${postgresql_version}"
     "postgresql-contrib-${postgresql_version}"
@@ -95,6 +92,8 @@ codename() {
 # =============================================================================
 
 setup() {
+    packages_curl
+
     postgresql_ppa
 
     packages_update
@@ -114,6 +113,14 @@ setup() {
 }
 
 
+# = Packages (1) ==============================================================
+
+packages_curl() {
+    # cURL is required by postgresql_ppa and RVM
+    aptget install curl
+}
+
+
 # = PostgreSQL ================================================================
 
 postgresql_ppa() {
@@ -125,7 +132,7 @@ postgresql_ppa() {
 }
 
 
-# = Packages ==================================================================
+# = Packages (2) ==============================================================
 
 packages_update() {
     aptget update
@@ -189,7 +196,7 @@ osm2pgsql_install() {(
 
 ruby_rvm() {
     sudo -s <<-"EOF"
-		curl https://get.rvm.io | bash -s stable --rails
+		curl -L https://get.rvm.io | bash -s stable --rails
 	EOF
 }
 
@@ -235,11 +242,12 @@ usage() {
 
 		    setup.sh [TASKS...]
 
-		TASKS   Tasks to perform (see "Tasks"). If none are given, the "setup"
-		        task is performed.
+		    TASKS   Tasks to perform (see "Tasks"). If none are given, the
+		            "setup" task is performed.
 
 		Tasks:
 		    setup
+		    packages_curl
 		    postgresql_ppa
 		    packages_update
 		    packages_install

@@ -69,6 +69,9 @@ aptitude=(
 
 
 gem=(
+    # Passenger and Nginx
+    'passenger'
+
     # CitySDK
     'dbf'
     'charlock_holmes'
@@ -88,6 +91,8 @@ osm2pgsql_path=${build_path}/${osm2pgsql_name}
 citysdk_name=citysdk
 
 citysdk_path=${build_path}/${citysdk_name}
+
+citysdk_gem_path=${citysdk_path}/gem
 
 
 # =============================================================================
@@ -110,15 +115,12 @@ ensure_build() {
 
 
 init_rvm='
-    set +o nounset
-    source /usr/local/rvm/scripts/rvm
-    set -o nounset
+    eval set +o nounset; source /usr/local/rvm/scripts/rvm; set -o nounset
 '
 
 
 init_shell='
-    set -o errexit
-    set -o nounset
+    eval set -o errexit; set -o nounset
 '
 
 
@@ -126,6 +128,16 @@ init_shell_rvm="
     ${init_shell}
     ${init_rvm}
 "
+
+
+pg() {
+    cat - | sudo -u postgres "${@}"
+}
+
+
+psql() {
+    cat - | pg psql "${db_name}" "${@}"
+}
 
 
 # =============================================================================
@@ -148,15 +160,16 @@ setup() {
     osm2pgsql_install
 
     ruby_rvm
-    ruby_passenger
     ruby_gems
-
-    db_create
-    db_extensions
+    ruby_passenger
 
     citysdk_clone
     citysdk_checkout
     citysdk_build
+    citysdk_install
+
+    db_create
+    db_extensions
 }
 
 
@@ -253,39 +266,24 @@ ruby_rvm() {
 }
 
 
+ruby_gems() {
+    sudo -s <<-EOF
+		${init_shell_rvm}
+		gem install --verbose ${gem[@]}
+	EOF
+}
+
+
 ruby_passenger() {
     sudo -s <<-EOF
 		${init_shell_rvm}
-		gem install passenger
-		cd -- "$(passenger-config --root)"
+		set +o nounset
+		cd -- "\$(passenger-config --root)"
+		set -o nounset
 		./bin/passenger-install-nginx-module \
 		        --auto                       \
 		        --auto-download              \
 		        --prefix=/usr/local/nginx
-	EOF
-}
-
-
-ruby_gems() {
-    sudo -s <<-EOF
-		${init_shell_rvm}
-		gem install ${gem[@]}
-	EOF
-}
-
-
-# = Database ==================================================================
-
-db_create() {
-    sudo -u postgres createdb "${db_name}"
-}
-
-
-db_extensions() {
-    sudo -u postgres psql "${db_name}" <<-"EOF"
-		CREATE EXTENSION IF NOT EXISTS hstore;
-		CREATE EXTENSION IF NOT EXISTS pg_trgm;
-		CREATE EXTENSION IF NOT EXISTS postgis;
 	EOF
 }
 
@@ -308,10 +306,37 @@ citysdk_checkout() {(
 
 
 citysdk_build() {(
-    cd -- "${citysdk_path}/gem"
+    cd -- "${citysdk_gem_path}"
     ${init_rvm}
     gem build citysdk.gemspec
 )}
+
+
+citysdk_install() {(
+    cd -- "${citysdk_gem_path}"
+    sudo -s <<-EOF
+        ${init_shell_rvm}
+		gem install --verbose citysdk-*.gem
+	EOF
+)}
+
+
+# = Database ==================================================================
+
+db_create() {
+    # XXX: Always successing may mask problems. Instead query for the
+    #      database and only create it if it does not exist.
+    pg createdb "${db_name}" < /dev/null || true
+}
+
+
+db_extensions() {
+    psql <<-"EOF"
+		CREATE EXTENSION IF NOT EXISTS hstore;
+		CREATE EXTENSION IF NOT EXISTS pg_trgm;
+		CREATE EXTENSION IF NOT EXISTS postgis;
+	EOF
+}
 
 
 # =============================================================================
@@ -331,24 +356,32 @@ usage() {
 
 		Tasks:
 		    setup
+
 		    aptitude_curl
+
 		    postgresql_ppa
+
 		    aptitude_update
 		    aptitude_install
 		    aptitude_upgrade
+
 		    osm2pgsql_clone
 		    osm2pgsql_checkout
 		    osm2pgsql_configure
 		    osm2pgsql_build
 		    osm2pgsql_install
+
 		    ruby_rvm
-		    ruby_passenger
 		    ruby_gems
-		    db_create
-		    db_extensions
+		    ruby_passenger
+
 		    citysdk_clone
 		    citysdk_checkout
 		    citysdk_build
+		    citysdk_install
+
+		    db_create
+		    db_extensions
 	EOF
     exit 1
 }

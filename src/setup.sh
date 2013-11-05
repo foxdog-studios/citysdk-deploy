@@ -130,12 +130,12 @@ init_shell_rvm="
 
 
 pg() {
-    cat - | sudo -u postgres "${@}"
+    sudo -u postgres "${@}"
 }
 
 
 psql() {
-    cat - | pg psql "${db_name}" "${@}"
+    pg psql "${db_name}" "${@}"
 }
 
 
@@ -296,7 +296,7 @@ citysdk_install() {(
 db_create() {
     # XXX: Always successing may mask problems. Instead query for the
     #      database and only create it if it does not exist.
-    pg createdb "${db_name}" < /dev/null || true
+    pg createdb "${db_name}" || true
 }
 
 

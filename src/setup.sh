@@ -64,7 +64,6 @@ aptitude=(
 
     # Memcached
     'memcached'
-
 )
 
 
@@ -315,7 +314,7 @@ citysdk_build() {(
 citysdk_install() {(
     cd -- "${citysdk_gem_path}"
     sudo -s <<-EOF
-        ${init_shell_rvm}
+		${init_shell_rvm}
 		gem install --verbose citysdk-*.gem
 	EOF
 )}
@@ -351,41 +350,29 @@ usage() {
 
 		    setup.sh [TASKS...]
 
-		    TASKS   Tasks to perform (see "Tasks"). If none are given, the
-		            "setup" task is performed.
-
 		Tasks:
-		    setup
-
-		    aptitude_curl
-
-		    postgresql_ppa
-
-		    aptitude_update
-		    aptitude_install
-		    aptitude_upgrade
-
-		    osm2pgsql_clone
-		    osm2pgsql_checkout
-		    osm2pgsql_configure
-		    osm2pgsql_build
-		    osm2pgsql_install
-
-		    ruby_rvm
-		    ruby_gems
-		    ruby_passenger
-
-		    citysdk_clone
-		    citysdk_checkout
-		    citysdk_build
-		    citysdk_install
-
-		    db_create
-		    db_extensions
+		     1) aptitude_curl
+		     2) postgresql_ppa
+		     3) aptitude_update
+		     4) aptitude_install
+		     5) aptitude_upgrade
+		     6) osm2pgsql_clone
+		     7) osm2pgsql_checkout
+		     8) osm2pgsql_configure
+		     9) osm2pgsql_build
+		    10) osm2pgsql_install
+		    11) ruby_rvm
+		    12) ruby_gems
+		    13) ruby_passenger
+		    14) citysdk_clone
+		    15) citysdk_checkout
+		    16) citysdk_build
+		    17) citysdk_install
+		    18) db_create
+		    19) db_extensions
 	EOF
     exit 1
 }
-
 
 while getopts : opt; do
     case "${opt}" in
@@ -393,9 +380,7 @@ while getopts : opt; do
     esac
 done
 
-
 shift $(( OPTIND - 1 ))
-
 
 for task in "${@:-setup}"; do
     ${task}

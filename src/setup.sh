@@ -22,18 +22,21 @@ set -o nounset
 # = Configuration                                                             =
 # =============================================================================
 
-# = Versions ==================================================================
-
 postgresql_version=9.3
 
 postgis_version=2.1
 
 osm2pgsql_tag=v0.82.0
 
+db_name=citysdk
+
 
 # = Packages ==================================================================
 
 packages=(
+    # Setup and RVM
+    'curl'
+
     # PostgreSQL
     "postgresql-${postgresql_version}"
     "postgresql-contrib-${postgresql_version}"
@@ -56,8 +59,11 @@ packages=(
     'protobuf-c-compiler'
     'zlib1g-dev'
 
-    # Passenger
+    # Ruby
     'libcurl4-openssl-dev'
+
+    # Memcached
+    'memcached'
 )
 
 
@@ -102,6 +108,9 @@ setup() {
 
     ruby_rvm
     ruby_passenger
+
+    db_create
+    db_extensions
 }
 
 
@@ -112,7 +121,7 @@ postgresql_ppa() {
 		deb http://apt.postgresql.org/pub/repos/apt/ $(codename)-pgdg main
 	EOF
     local 'url=http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc'
-    wget --output-document - --quiet "${url}" | sudo apt-key add -
+    curl "${url}" | sudo apt-key add -
 }
 
 
@@ -180,8 +189,7 @@ osm2pgsql_install() {(
 
 ruby_rvm() {
     sudo -s <<-"EOF"
-		wget --output-document - https://get.rvm.io \
-		        | bash -s stable --rails
+		curl https://get.rvm.io | bash -s stable --rails
 	EOF
 }
 
@@ -195,6 +203,22 @@ ruby_passenger() {
 		        --auto                       \
 		        --auto-download              \
 		        --prefix=/usr/local/nginx
+	EOF
+}
+
+
+# = Database ==================================================================
+
+db_create() {
+    sudo -u postgres createdb "${db_name}"
+}
+
+
+db_extensions() {
+    sudo -u postgres psql "${db_name}" <<-"EOF"
+		CREATE EXTENSION IF NOT EXISTS hstore;
+		CREATE EXTENSION IF NOT EXISTS pg_trgm;
+		CREATE EXTENSION IF NOT EXISTS postgis;
 	EOF
 }
 
@@ -226,6 +250,8 @@ usage() {
 		    osm2pgsql_install
 		    ruby_rvm
 		    ruby_passenger
+		    db_create
+		    db_extensions
 	EOF
     exit 1
 }

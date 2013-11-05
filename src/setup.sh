@@ -33,7 +33,7 @@ db_name=citysdk
 citysdk_commit=fad84044e4de679452675d9f7c3f9d9e51b79480
 
 
-# = aptitude ==================================================================
+# = Packages ==================================================================
 
 aptitude=(
     # PostgreSQL
@@ -142,35 +142,6 @@ psql() {
 # =============================================================================
 # = Tasks                                                                     =
 # =============================================================================
-
-setup() {
-    aptitude_curl
-
-    postgresql_ppa
-
-    aptitude_update
-    aptitude_install
-    aptitude_upgrade
-
-    osm2pgsql_clone
-    osm2pgsql_checkout
-    osm2pgsql_configure
-    osm2pgsql_build
-    osm2pgsql_install
-
-    ruby_rvm
-    ruby_gems
-    ruby_passenger
-
-    citysdk_clone
-    citysdk_checkout
-    citysdk_build
-    citysdk_install
-
-    db_create
-    db_extensions
-}
-
 
 # = Aptitude (1) ==============================================================
 
@@ -342,13 +313,41 @@ db_extensions() {
 # = Command line interface                                                    =
 # =============================================================================
 
+all_tasks=(
+    aptitude_curl
+
+    postgresql_ppa
+
+    aptitude_update
+    aptitude_install
+    aptitude_upgrade
+
+    osm2pgsql_clone
+    osm2pgsql_checkout
+    osm2pgsql_configure
+    osm2pgsql_build
+    osm2pgsql_install
+
+    ruby_rvm
+    ruby_gems
+    ruby_passenger
+
+    citysdk_clone
+    citysdk_checkout
+    citysdk_build
+    citysdk_install
+
+    db_create
+    db_extensions
+)
+
 usage() {
     cat <<-"EOF"
 		Set up CitySDK on this machine
 
 		Usage:
 
-		    setup.sh [TASKS...]
+		    setup.sh [-s TASK_ID | [TASKS...]]
 
 		Tasks:
 		     1) aptitude_curl
@@ -374,15 +373,28 @@ usage() {
     exit 1
 }
 
-while getopts : opt; do
+start_id=0
+
+while getopts :s: opt; do
     case "${opt}" in
+        s) start_id=${OPTARG} ;;
         \?|*) usage ;;
     esac
 done
 
 shift $(( OPTIND - 1 ))
 
-for task in "${@:-setup}"; do
+if [[ "${start_id}" != 0 ]]; then
+    if [[ "${#}" != 0 ]]; then
+        usage
+    fi
+    start_id=$[ start_id - 1 ]
+    tasks=( "${all_tasks[@]:$start_id}" )
+else
+    tasks=( "${@:-${all_tasks[@]}}" )
+fi
+
+for task in "${tasks[@]}"; do
     ${task}
 done
 

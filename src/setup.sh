@@ -39,33 +39,34 @@ osm_uri=http://download.geofabrik.de/europe-latest.osm.pbf
 
 aptitude=(
     # PostgreSQL
-    "postgresql-${postgresql_version}"
-    "postgresql-contrib-${postgresql_version}"
+        "postgresql-${postgresql_version}"
+        "postgresql-contrib-${postgresql_version}"
 
     # PostGIS
-    "postgresql-${postgresql_version}-postgis-${postgis_version}"
+        "postgresql-${postgresql_version}-postgis-${postgis_version}"
 
     # osm2pgsql
-    'autoconf'
-    'g++'
-    'git'
-    'libbz2-dev'
-    'libgeos++-dev'
-    'libpq-dev'
-    'libprotobuf-c0-dev'
-    'libtool'
-    'libxml2-dev'
-    "postgresql-server-dev-${postgresql_version}"
-    'proj'
-    'protobuf-c-compiler'
-    'zlib1g-dev'
+        'autoconf'
+        'g++'
+        'git'
+        'libbz2-dev'
+        'libgeos++-dev'
+        'libpq-dev'
+        'libprotobuf-c0-dev'
+        'libtool'
+        'libxml2-dev'
+        "postgresql-server-dev-${postgresql_version}"
+        'proj'
+        'protobuf-c-compiler'
+        'zlib1g-dev'
 
     # Ruby
-    'libcurl4-openssl-dev'
-    'libicu-dev' # Required by charlock_holmes
+        'libcurl4-openssl-dev'
+        # charlock_holmes
+            'libicu-dev'
 
     # Memcached
-    'memcached'
+        'memcached'
 )
 
 
@@ -303,6 +304,7 @@ db_extensions() {
 		CREATE EXTENSION IF NOT EXISTS postgis;
 	EOF
 }
+
 
 # = OpenStreetMap =============================================================
 

@@ -1,9 +1,7 @@
-Deploying CitySDK
-=================
+CitySDK Deploy
+==============
 
-This document describes how to set up an Ubuntu 12.04 LTS server and deploy
-CitySDK into it.
-
+How to setup an Ubuntu 12.04 LTS server and deploy CitySDK on it
 
 Set up
 ------
@@ -18,7 +16,8 @@ Deploy
 
 1.  Copy the `setup.sh` script from the `src` directory to the target machine.
 
-2.  Execute the `setup.sh` script on the target machine.
+2.  Execute the `setup.sh` script on the target machine. You may be prompted
+    for your `sudoer` password multiple times while the script executes.
 
 
 Testing

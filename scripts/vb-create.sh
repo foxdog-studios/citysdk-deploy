@@ -56,9 +56,10 @@ vmdir() {
 name=CitySDK
 
 adpater=${1}
+cpus=4
 hd_name=${name}-disk1.vmdk
-hd_size=40000 # MB
-memory=1024 # MB
+hd_size=40000 # MB (40 GB)
+memory=1000 # MB (1 GB)
 ostype=Ubuntu_64
 storagectl_name='SATA'
 
@@ -73,7 +74,7 @@ VBoxManage createvm                                                           \
 
 manage modifyvm                                                               \
     --bridgeadapter1 "${adpater}"                                             \
-    --cpus "$(nproc)"                                                         \
+    --cpus "${cpus}"                                                          \
     --ioapic on                                                               \
     --memory "${memory}"                                                      \
     --nic1 bridged                                                            \

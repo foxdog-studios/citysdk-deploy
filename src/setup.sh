@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2013 FOXDOG STUDIOS LTD
+# Copyright 2013 Foxdog Studios
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ osm2pgsql_tag=v0.82.0
 db_name=citysdk
 
 citysdk_commit=fad84044e4de679452675d9f7c3f9d9e51b79480
+
+osm_uri=http://download.geofabrik.de/europe-latest.osm.pbf
 
 
 # = Packages ==================================================================
@@ -67,18 +69,6 @@ aptitude=(
 )
 
 
-gem=(
-    # Passenger and Nginx
-    'passenger'
-
-    # CitySDK
-    'dbf'
-    'charlock_holmes'
-    'faraday'
-    'georuby'
-)
-
-
 # = Paths =====================================================================
 
 build_path=${HOME}/build
@@ -92,6 +82,10 @@ citysdk_name=citysdk
 citysdk_path=${build_path}/${citysdk_name}
 
 citysdk_gem_path=${citysdk_path}/gem
+
+osm_name=europe-latest.osm.pbf
+
+osm_path=${build_path}/${osm_name}
 
 
 # =============================================================================
@@ -111,22 +105,6 @@ codename() {
 ensure_build() {
     mkdir -p "${build_path}"
 }
-
-
-init_rvm='
-    eval set +o nounset; source /usr/local/rvm/scripts/rvm; set -o nounset
-'
-
-
-init_shell='
-    eval set -o errexit; set -o nounset
-'
-
-
-init_shell_rvm="
-    ${init_shell}
-    ${init_rvm}
-"
 
 
 pg() {
@@ -230,26 +208,19 @@ osm2pgsql_install() {(
 
 ruby_rvm() {
     sudo -s <<-EOF
-		${init_shell}
+		set -o errexit
+		set -o nounset
 		curl -L https://get.rvm.io | bash -s stable --rails
-	EOF
-}
-
-
-ruby_gems() {
-    sudo -s <<-EOF
-		${init_shell_rvm}
-		gem install --verbose ${gem[@]}
 	EOF
 }
 
 
 ruby_passenger() {
     sudo -s <<-EOF
-		${init_shell_rvm}
-		set +o nounset
+		set -o errexit
+		source /usr/local/rvm/scripts/rvm
+		gem install --verbose passenger
 		cd -- "\$(passenger-config --root)"
-		set -o nounset
 		./bin/passenger-install-nginx-module \
 		        --auto                       \
 		        --auto-download              \
@@ -275,26 +246,51 @@ citysdk_checkout() {(
 )}
 
 
-citysdk_build() {(
+citysdk_bundle() {
+    local project projects
+    projects=(
+        cms
+        devsite
+        server
+        discovery
+        rdf
+        services
+        gem
+    )
+    for project in "${projects[@]}"; do
+        sudo -s <<-EOF
+			set -o errexit
+			source /usr/local/rvm/scripts/rvm
+			cd -- "${citysdk_path}/${project}"
+			bundle
+		EOF
+    done
+}
+
+
+citysdk_gem_build() {(
+    set -o errexit
+    source /usr/local/rvm/scripts/rvm
+    set -o nounset
     cd -- "${citysdk_gem_path}"
-    ${init_rvm}
     gem build citysdk.gemspec
 )}
 
 
-citysdk_install() {(
-    cd -- "${citysdk_gem_path}"
+citysdk_gem_install() {
     sudo -s <<-EOF
-		${init_shell_rvm}
+		set -o errexit
+		source /usr/local/rvm/scripts/rvm
+		cd -- "${citysdk_gem_path}"
 		gem install --verbose citysdk-*.gem
 	EOF
-)}
+}
 
 
 # = Database ==================================================================
 
 db_create() {
-    # XXX: Always successing may mask problems. Instead query for the
+    # XXX: Always succeeding may mask problems. Instead query for the
     #      database and only create it if it does not exist.
     pg createdb "${db_name}" || true
 }
@@ -306,6 +302,22 @@ db_extensions() {
 		CREATE EXTENSION IF NOT EXISTS pg_trgm;
 		CREATE EXTENSION IF NOT EXISTS postgis;
 	EOF
+}
+
+# = OpenStreetMap =============================================================
+
+osm_download() {
+    ensure_build
+    if [[ -f "${osm_path}" ]]; then
+        echo 'OSM data appears to have been downloaded already'
+    else
+        curl -L "${osm_uri}" > "${osm_path}"
+    fi
+}
+
+
+osm_import() {
+    pg osm2pgsql --cache 1000 --database "${db_name}" "${osm_path}"
 }
 
 
@@ -329,16 +341,19 @@ all_tasks=(
     osm2pgsql_install
 
     ruby_rvm
-    ruby_gems
     ruby_passenger
 
     citysdk_clone
     citysdk_checkout
-    citysdk_build
-    citysdk_install
+    citysdk_bundle
+    citysdk_gem_build
+    citysdk_gem_install
 
     db_create
     db_extensions
+
+    osm_download
+    osm_import
 )
 
 usage() {
@@ -361,14 +376,16 @@ usage() {
 		     9) osm2pgsql_build
 		    10) osm2pgsql_install
 		    11) ruby_rvm
-		    12) ruby_gems
-		    13) ruby_passenger
-		    14) citysdk_clone
-		    15) citysdk_checkout
-		    16) citysdk_build
-		    17) citysdk_install
+		    12) ruby_passenger
+		    13) citysdk_clone
+		    14) citysdk_checkout
+		    15) citysdk_bundle
+		    16) citysdk_gem_build
+		    17) citysdk_gem_install
 		    18) db_create
-		    19) db_extensions
+		    29) db_extensions
+		    20) osm_download
+		    21) osm_import
 	EOF
     exit 1
 }
@@ -395,6 +412,7 @@ else
 fi
 
 for task in "${tasks[@]}"; do
+    echo -e "\n\e[5;34mTask: ${task}\e[0m\n"
     ${task}
 done
 

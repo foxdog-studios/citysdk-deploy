@@ -69,6 +69,11 @@ aptitude=(
         'memcached'
 )
 
+gems=(
+    'capistrano -v 2.15.4'
+    'capistrano-ext -v 1.2.1'
+    'passenger -v 4.0.23'
+)
 
 # = Paths =====================================================================
 
@@ -215,12 +220,19 @@ ruby_rvm() {
 	EOF
 }
 
+ruby_gems() {
+    for gem in "${gems[@]}"; do
+        sudo -s <<-EOF
+			set -o errexit
+			source /usr/local/rvm/scripts/rvm
+			gem install --verbose ${gem}
+		EOF
+    done
+}
 
 ruby_passenger() {
     sudo -s <<-EOF
 		set -o errexit
-		source /usr/local/rvm/scripts/rvm
-		gem install --verbose passenger
 		cd -- "\$(passenger-config --root)"
 		./bin/passenger-install-nginx-module \
 		        --auto                       \
@@ -244,6 +256,15 @@ citysdk_clone() {
 citysdk_checkout() {(
     cd -- "${citysdk_path}"
     git checkout "${citysdk_commit}"
+)}
+
+
+citysdk_deploy() {(
+    cd -- "${citysdk_path}/server"
+    set +o nounset
+	source /usr/local/rvm/scripts/rvm
+    set -o nounset
+    cap production deploy
 )}
 
 
@@ -271,8 +292,8 @@ citysdk_bundle() {
 
 citysdk_gem_build() {(
     set -o errexit
+    set +o nounset
     source /usr/local/rvm/scripts/rvm
-    set -o nounset
     cd -- "${citysdk_gem_path}"
     gem build citysdk.gemspec
 )}
@@ -343,10 +364,12 @@ all_tasks=(
     osm2pgsql_install
 
     ruby_rvm
+    ruby_gems
     ruby_passenger
 
     citysdk_clone
     citysdk_checkout
+    citysdk_deploy
     citysdk_bundle
     citysdk_gem_build
     citysdk_gem_install
@@ -378,16 +401,18 @@ usage() {
 		     9) osm2pgsql_build
 		    10) osm2pgsql_install
 		    11) ruby_rvm
-		    12) ruby_passenger
-		    13) citysdk_clone
-		    14) citysdk_checkout
-		    15) citysdk_bundle
-		    16) citysdk_gem_build
-		    17) citysdk_gem_install
-		    18) db_create
-		    29) db_extensions
-		    20) osm_download
-		    21) osm_import
+		    12) ruby_gems
+		    13) ruby_passenger
+		    14) citysdk_clone
+		    15) citysdk_checkout
+		    16) citysdk_deploy
+		    17) citysdk_bundle
+		    18) citysdk_gem_build
+		    19) citysdk_gem_install
+		    10) db_create
+		    21) db_extensions
+		    22) osm_download
+		    23) osm_import
 	EOF
     exit 1
 }

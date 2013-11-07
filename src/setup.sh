@@ -70,10 +70,11 @@ aptitude=(
 )
 
 gems=(
-    'capistrano -v 2.15.4'
-    'capistrano-ext -v 1.2.1'
-    'passenger -v 4.0.23'
+    'capistrano     -v 2.15.4'
+    'capistrano-ext -v 1.2.1 '
+    'passenger      -v 4.0.23'
 )
+
 
 # = Paths =====================================================================
 
@@ -212,6 +213,11 @@ osm2pgsql_install() {(
 
 # = Ruby ======================================================================
 
+ruby_gemrc() {
+    sudo tee /etc/gemrc <<< 'gem: --no-rdoc --no-ri'
+}
+
+
 ruby_rvm() {
     sudo -s <<-EOF
 		set -o errexit
@@ -219,6 +225,7 @@ ruby_rvm() {
 		curl -L https://get.rvm.io | bash -s stable --rails
 	EOF
 }
+
 
 ruby_gems() {
     for gem in "${gems[@]}"; do
@@ -230,10 +237,12 @@ ruby_gems() {
     done
 }
 
+
 ruby_passenger() {
-    sudo -s <<-EOF
+    sudo -s <<-"EOF"
 		set -o errexit
-		cd -- "\$(passenger-config --root)"
+		source /usr/local/rvm/scripts/rvm
+		cd -- "$(passenger-config --root)"
 		./bin/passenger-install-nginx-module \
 		        --auto                       \
 		        --auto-download              \
@@ -260,40 +269,18 @@ citysdk_checkout() {(
 
 
 citysdk_deploy() {(
-    cd -- "${citysdk_path}/server"
     set +o nounset
-	source /usr/local/rvm/scripts/rvm
+    source /usr/local/rvm/scripts/rvm
     set -o nounset
+    cd -- "${citysdk_path}/server"
     cap production deploy
 )}
 
 
-citysdk_bundle() {
-    local project projects
-    projects=(
-        cms
-        devsite
-        server
-        discovery
-        rdf
-        services
-        gem
-    )
-    for project in "${projects[@]}"; do
-        sudo -s <<-EOF
-			set -o errexit
-			source /usr/local/rvm/scripts/rvm
-			cd -- "${citysdk_path}/${project}"
-			bundle
-		EOF
-    done
-}
-
-
 citysdk_gem_build() {(
-    set -o errexit
     set +o nounset
     source /usr/local/rvm/scripts/rvm
+    set -o nounset
     cd -- "${citysdk_gem_path}"
     gem build citysdk.gemspec
 )}
@@ -363,6 +350,7 @@ all_tasks=(
     osm2pgsql_build
     osm2pgsql_install
 
+    ruby_gemrc
     ruby_rvm
     ruby_gems
     ruby_passenger
@@ -370,7 +358,6 @@ all_tasks=(
     citysdk_clone
     citysdk_checkout
     citysdk_deploy
-    citysdk_bundle
     citysdk_gem_build
     citysdk_gem_install
 
@@ -400,16 +387,16 @@ usage() {
 		     8) osm2pgsql_configure
 		     9) osm2pgsql_build
 		    10) osm2pgsql_install
-		    11) ruby_rvm
-		    12) ruby_gems
-		    13) ruby_passenger
-		    14) citysdk_clone
-		    15) citysdk_checkout
-		    16) citysdk_deploy
-		    17) citysdk_bundle
+		    11) ruby_gemrc
+		    12) ruby_rvm
+		    13) ruby_gems
+		    14) ruby_passenger
+		    15) citysdk_clone
+		    16) citysdk_checkout
+		    17) citysdk_deploy
 		    18) citysdk_gem_build
 		    19) citysdk_gem_install
-		    10) db_create
+		    20) db_create
 		    21) db_extensions
 		    22) osm_download
 		    23) osm_import
@@ -433,7 +420,7 @@ if [[ "${start_id}" != 0 ]]; then
         usage
     fi
     start_id=$[ start_id - 1 ]
-    tasks=( "${all_tasks[@]:$start_id}" )
+    tasks=( "${all_tasks[@]:${start_id}}" )
 else
     tasks=( "${@:-${all_tasks[@]}}" )
 fi
